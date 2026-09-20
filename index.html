@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Normal Map Lab // normal-map-lab.slippylabs.com</title>
+<meta name="description" content="Turn a sprite into a normal map — from luminance, from alpha, or bevelled from the silhouette — and light it live with a draggable light before you export. Runs entirely in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://normal-map-lab.slippylabs.com/">
+<meta property="og:title" content="Normal Map Lab // normal-map-lab.slippylabs.com">
+<meta property="og:description" content="Turn a sprite into a normal map — from luminance, from alpha, or bevelled from the silhouette — and light it live with a draggable light before you export. Runs entirely in your browser.">
+<meta property="og:image" content="https://normal-map-lab.slippylabs.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Normal Map Lab // normal-map-lab.slippylabs.com">
+<meta name="twitter:description" content="Turn a sprite into a normal map — from luminance, from alpha, or bevelled from the silhouette — and light it live with a draggable light before you export. Runs entirely in your browser.">
+<meta name="twitter:image" content="https://normal-map-lab.slippylabs.com/og-image.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2234%22%20r%3D%2222%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2220%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3Ccircle%20cx%3D%2244%22%20cy%3D%2216%22%20r%3D%228%22%20fill%3D%22%231c8a52%22%20stroke%3D%22%2339ff8f%22%20stroke-width%3D%222%22%2F%3E%3C%2Fsvg%3E">
+<meta name="theme-color" content="#050b10">
+<link rel="stylesheet" href="style.css?v=1">
+<script>/* perf-lite: drop blend/blur effects on low-power devices. ?fx=lite or ?fx=full to override (persisted). */
+(function(){try{var k="slippy-fx",m=location.search.match(/[?&]fx=(lite|full)/),v=m?m[1]:localStorage.getItem(k);if(m)localStorage.setItem(k,v);if(v==="lite"||(v!=="full"&&(navigator.hardwareConcurrency||8)<=2))document.documentElement.classList.add("perf-lite");}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="starfield"></div>
+<div class="scanlines"></div>
+
+<main class="page-wrap">
+  <div class="hud-panel wide">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+
+    <div class="callsign-row">
+      <div class="toad-avatar-wrap">
+        <svg class="toad-avatar" width="46" height="46" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="lock-reticle"></div>
+      </div>
+      <span class="callsign">Workshop Division // Tool</span>
+      <div class="nav-links">
+        <a href="https://projects.slippylabs.com/" class="logout-link">← Archive</a>
+      </div>
+    </div>
+
+
+    <h1>NORMAL MAP LAB</h1>
+    <p class="subtitle">A flat sprite lit from one side stops looking flat. A normal map is just a picture where each pixel says which way that pixel faces, and you can build a convincing one out of the sprite you already have.</p>
+
+    <div class="nm-source-row">
+      <div class="tool-field-row">
+        <label class="tool-field-label" for="image-input">Sprite or texture</label>
+        <input class="tool-file-input" id="image-input" type="file" accept="image/*">
+      </div>
+      <div class="tool-controls">
+        <button class="tool-btn ghost" data-demo="coin">Demo: coin</button>
+        <button class="tool-btn ghost" data-demo="bricks">Demo: bricks</button>
+        <button class="tool-btn ghost" data-demo="blob">Demo: blob</button>
+      </div>
+    </div>
+
+    <div class="nm-views">
+      <figure class="nm-view">
+        <canvas id="source" width="256" height="256"></canvas>
+        <figcaption>Source</figcaption>
+      </figure>
+      <figure class="nm-view">
+        <canvas id="height" width="256" height="256"></canvas>
+        <figcaption>Height</figcaption>
+      </figure>
+      <figure class="nm-view">
+        <canvas id="normal" width="256" height="256"></canvas>
+        <figcaption>Normal map</figcaption>
+      </figure>
+      <figure class="nm-view">
+        <canvas id="lit" width="256" height="256"
+                aria-label="Lit preview. Drag to move the light, or use the light position sliders."></canvas>
+        <figcaption>Lit — drag to move the light</figcaption>
+      </figure>
+    </div>
+
+    <div class="two-col nm-controls">
+      <div>
+        <h2 class="nm-h2">Height</h2>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="source-select">Height comes from</label>
+          <select class="tool-select" id="source-select">
+            <option value="luminance" selected>Luminance — bright is high</option>
+            <option value="luminance-inv">Luminance, inverted — dark is high</option>
+            <option value="alpha">Alpha — opaque is high</option>
+            <option value="bevel">Bevel from the silhouette</option>
+          </select>
+        </div>
+        <p class="tool-note" id="source-note"></p>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="scale-slider">Height scale — <span id="scale-value">12</span> px</label>
+          <div class="tool-slider-row"><input type="range" id="scale-slider" min="1" max="80" step="1" value="12"></div>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="blur-slider">Smoothing — <span id="blur-value">1.0</span> px</label>
+          <div class="tool-slider-row"><input type="range" id="blur-slider" min="0" max="12" step="0.25" value="1"></div>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="bevel-slider">Bevel width — <span id="bevel-value">10</span> px</label>
+          <div class="tool-slider-row"><input type="range" id="bevel-slider" min="1" max="60" step="1" value="10"></div>
+        </div>
+      </div>
+
+      <div>
+        <h2 class="nm-h2">Normals</h2>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="operator-select">Gradient operator</label>
+          <select class="tool-select" id="operator-select">
+            <option value="sobel" selected>Sobel 3×3 — smoother, noise tolerant</option>
+            <option value="central">Central difference — sharper, exact on smooth surfaces</option>
+          </select>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="strength-slider">Strength — <span id="strength-value">1.00</span>×</label>
+          <div class="tool-slider-row"><input type="range" id="strength-slider" min="0.05" max="5" step="0.05" value="1"></div>
+        </div>
+        <div class="tool-checks">
+          <label class="tool-check"><input type="checkbox" id="invx-check"> Invert X (red)</label>
+          <label class="tool-check"><input type="checkbox" id="invy-check"> Invert Y (green) — DirectX convention</label>
+        </div>
+        <p class="tool-note">Unity, Unreal and most of the web want OpenGL-style normals, with green pointing up. Some tools (and older Unreal content) expect it the other way; if your lighting looks inside-out along one axis only, this is the switch.</p>
+
+        <h2 class="nm-h2">Light</h2>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="lz-slider">Light height — <span id="lz-value">0.55</span></label>
+          <div class="tool-slider-row"><input type="range" id="lz-slider" min="0.05" max="2" step="0.05" value="0.55"></div>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="ambient-slider">Ambient — <span id="ambient-value">0.18</span></label>
+          <div class="tool-slider-row"><input type="range" id="ambient-slider" min="0" max="1" step="0.01" value="0.18"></div>
+        </div>
+        <div class="tool-field-row">
+          <label class="tool-field-label" for="spec-slider">Specular — <span id="spec-value">0.35</span></label>
+          <div class="tool-slider-row"><input type="range" id="spec-slider" min="0" max="1" step="0.01" value="0.35"></div>
+        </div>
+        <div class="tool-checks">
+          <label class="tool-check"><input type="checkbox" id="orbit-check" checked> Orbit the light</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="net-grid">
+      <div class="net-tile"><div class="net-tile-label">Size</div><div class="net-tile-value" id="stat-size">—</div></div>
+      <div class="net-tile"><div class="net-tile-label">Steepest slope</div><div class="net-tile-value" id="stat-slope">—</div></div>
+      <div class="net-tile"><div class="net-tile-label">Mean tilt</div><div class="net-tile-value" id="stat-tilt">—</div></div>
+      <div class="net-tile"><div class="net-tile-label">Flat pixels</div><div class="net-tile-value" id="stat-flat">—</div></div>
+    </div>
+
+    <div class="tool-controls">
+      <button class="tool-btn" id="normal-btn">Download normal map</button>
+      <button class="tool-btn ghost" id="height-btn">Download height map</button>
+      <a id="download-link" hidden></a>
+    </div>
+    <p class="tool-note">Both come out the same size as the source. The normal map is the one your shader samples; the height map is worth keeping if you ever want parallax, or to come back and re-tune the strength without starting from the sprite again.</p>
+    <div class="comm-window">
+      <div class="comm-portrait">
+        <svg width="36" height="36" viewBox="0 0 64 64">
+          <circle cx="32" cy="34" r="22" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="44" cy="16" r="8" fill="#1c8a52" stroke="#39ff8f" stroke-width="2"/>
+          <circle cx="20" cy="16" r="3.5" fill="#050b10"/>
+          <circle cx="44" cy="16" r="3.5" fill="#050b10"/>
+          <ellipse cx="24" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <ellipse cx="40" cy="32" rx="4.5" ry="5.5" fill="#050b10"/>
+          <circle cx="24" cy="30" r="1.4" fill="#39ff8f"/>
+          <circle cx="40" cy="30" r="1.4" fill="#39ff8f"/>
+          <path d="M22 42 Q32 48 42 42" stroke="#050b10" stroke-width="2" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="comm-body">
+        <div class="comm-label"><span class="dot"></span> Incoming Transmission &mdash; Slippy</div>
+        <p>&quot;Red is left-to-right, green is up-and-down, blue is how much it faces you. That is the whole format.&quot;</p>
+      </div>
+    </div>
+
+    <a href="https://projects.slippylabs.com/" class="hud-btn">← Back to Archive</a>
+  </div>
+</main>
+
+
+<script>
+/* ---- Height and normals ------------------------------------------------------
+   A normal map stores a direction per pixel, packed into colour: x and y from
+   -1..1 into 0..255 with 128 as zero, and z from 0..1 into 128..255. A flat
+   surface is therefore (128, 128, 255) -- the famous lavender -- and any normal
+   map that is not mostly lavender is either very bumpy or wrong.
+
+   Getting there from a picture is two steps: decide a height for every pixel,
+   then take the slope of that height field. The slope IS the normal:
+
+       n = normalize(-dh/dx, -dh/dy, 1)
+
+   with the minus signs because a surface that climbs to the right faces left.
+   Height is kept in PIXELS throughout, so a slope is a real gradient and the
+   formula above needs no fudge factor -- which is also what makes it testable
+   against a surface whose normals are known. */
+
+function luminance(r, g, b) {
+  /* Rec. 709, the coefficients a display actually uses. A plain (r+g+b)/3
+     makes blue as tall as green, and a blue sprite comes out with the wrong
+     relief. */
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+function heightFromImage(pixels, width, height, mode) {
+  const out = new Float32Array(width * height);
+  for (let i = 0; i < width * height; i++) {
+    const p = i * 4;
+    const a = pixels[p + 3] / 255;
+    let v;
+    switch (mode) {
+      case 'alpha': v = a; break;
+      case 'luminance-inv': v = 1 - luminance(pixels[p], pixels[p + 1], pixels[p + 2]); break;
+      default: v = luminance(pixels[p], pixels[p + 1], pixels[p + 2]);
+    }
+    /* Transparent pixels have no colour worth reading -- a PNG's RGB under a
+       zero alpha is whatever the editor left there, and reading it produces
+       relief in empty space. */
+    out[i] = mode === 'alpha' ? v : v * a;
+  }
+  return out;
+}
+
+/* ---- Bevel from the silhouette ------------------------------------------------
+   The trick that makes a flat sprite read as a rounded object: take the
+   distance from each opaque pixel to the nearest transparent one, and use a
+   curve of that distance as the height. Near the edge the surface turns over;
+   in the middle it is flat and facing you.
+
+   The distance has to be a true Euclidean distance. A chamfer approximation
+   puts visible diagonal creases around every bevel, and the sweeping
+   vector-propagation transforms (4SED/8SSEDT) are cheap but only ALMOST exact
+   -- measured against an exact transform they are out by a few hundredths of a
+   pixel in the awkward configurations, which is small but is a permanent,
+   silent wrongness in the one number the whole bevel is built on.
+
+   So this is Felzenszwalb and Huttenlocher's transform instead: run a 1D exact
+   transform down every column and then across every row. It is exact because
+   the squared Euclidean distance is separable -- the 2D answer really is the
+   lower envelope of the 1D answers -- and it is still linear time, because that
+   envelope is found by walking a stack of parabolas rather than by searching. */
+
+const DT_INF = 1e20;
+
+/* The lower envelope of the parabolas rooted at each sample. v holds the
+   parabolas that are lowest somewhere; z holds the boundaries between them. */
+function distanceTransform1D(f, n, out) {
+  const v = new Int32Array(n);
+  const z = new Float64Array(n + 1);
+  let k = 0;
+  v[0] = 0;
+  z[0] = -DT_INF;
+  z[1] = DT_INF;
+  for (let q = 1; q < n; q++) {
+    let s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    while (s <= z[k]) {
+      k--;
+      s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2 * q - 2 * v[k]);
+    }
+    k++;
+    v[k] = q;
+    z[k] = s;
+    z[k + 1] = DT_INF;
+  }
+  k = 0;
+  for (let q = 0; q < n; q++) {
+    while (z[k + 1] < q) k++;
+    out[q] = (q - v[k]) * (q - v[k]) + f[v[k]];
+  }
+}
+
+function distanceTransform(mask, width, height) {
+  /* Squared distances throughout; one square root each at the end. */
+  const grid = new Float64Array(width * height);
+  for (let i = 0; i < grid.length; i++) grid[i] = mask[i] ? DT_INF : 0;
+
+  const column = new Float64Array(height);
+  const columnOut = new Float64Array(height);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) column[y] = grid[y * width + x];
+    distanceTransform1D(column, height, columnOut);
+    for (let y = 0; y < height; y++) grid[y * width + x] = columnOut[y];
+  }
+
+  const row = new Float64Array(width);
+  const rowOut = new Float64Array(width);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) row[x] = grid[y * width + x];
+    distanceTransform1D(row, width, rowOut);
+    for (let x = 0; x < width; x++) grid[y * width + x] = rowOut[x];
+  }
+
+  const out = new Float32Array(width * height);
+  for (let i = 0; i < out.length; i++) out[i] = Math.sqrt(grid[i]);
+  return out;
+}
+
+function bevelHeight(pixels, width, height, bevelWidth) {
+  const mask = new Uint8Array(width * height);
+  for (let i = 0; i < width * height; i++) mask[i] = pixels[i * 4 + 3] > 8 ? 1 : 0;
+  const dist = distanceTransform(mask, width, height);
+  const out = new Float32Array(width * height);
+  const w = Math.max(1, bevelWidth);
+  for (let i = 0; i < out.length; i++) {
+    if (!mask[i]) { out[i] = 0; continue; }
+    const t = Math.min(1, dist[i] / w);
+    /* A quarter circle, so the edge turns over smoothly and the middle is flat.
+       A linear ramp gives a chamfer -- a hard crease all the way round, which
+       reads as a bevelled coin and not as a rounded one. */
+    out[i] = Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t)));
+  }
+  return out;
+}
+
+/* Separable Gaussian. Separable because a 2D Gaussian is the product of two 1D
+   ones, which turns O(r^2) per pixel into O(r). */
+function gaussianKernel(sigma) {
+  const radius = Math.max(1, Math.ceil(sigma * 3));
+  const k = new Float64Array(radius * 2 + 1);
+  let sum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const v = Math.exp(-(i * i) / (2 * sigma * sigma));
+    k[i + radius] = v;
+    sum += v;
+  }
+  for (let i = 0; i < k.length; i++) k[i] /= sum;
+  return { kernel: k, radius };
+}
+
+function blur(field, width, height, sigma) {
+  if (sigma <= 0) return field.slice();
+  const { kernel, radius } = gaussianKernel(sigma);
+  const tmp = new Float32Array(width * height);
+  const out = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let acc = 0;
+      for (let i = -radius; i <= radius; i++) {
+        /* Clamp at the border. Wrapping would make a sprite's left edge inherit
+           its right edge's height and put a ridge down the side. */
+        const sx = Math.min(width - 1, Math.max(0, x + i));
+        acc += field[y * width + sx] * kernel[i + radius];
+      }
+      tmp[y * width + x] = acc;
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let acc = 0;
+      for (let i = -radius; i <= radius; i++) {
+        const sy = Math.min(height - 1, Math.max(0, y + i));
+        acc += tmp[sy * width + x] * kernel[i + radius];
+      }
+      out[y * width + x] = acc;
+    }
+  }
+  return out;
+}
+
+/* The gradient, then the normal. Two operators: Sobel averages across three
+   rows and is what you want on a noisy photograph; a central difference is the
+   textbook derivative and is exact to second order on a smooth surface, which
+   is what makes it checkable against a sphere. */
+function heightToNormals(field, width, height, options = {}) {
+  const strength = options.strength === undefined ? 1 : options.strength;
+  const operator = options.operator === 'central' ? 'central' : 'sobel';
+  const invertX = !!options.invertX;
+  const invertY = !!options.invertY;
+  const out = new Float32Array(width * height * 3);
+  const at = (x, y) => field[Math.min(height - 1, Math.max(0, y)) * width
+    + Math.min(width - 1, Math.max(0, x))];
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let gx;
+      let gy;
+      if (operator === 'central') {
+        gx = (at(x + 1, y) - at(x - 1, y)) / 2;
+        gy = (at(x, y + 1) - at(x, y - 1)) / 2;
+      } else {
+        gx = ((at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1))
+            - (at(x - 1, y - 1) + 2 * at(x - 1, y) + at(x - 1, y + 1))) / 8;
+        gy = ((at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1))
+            - (at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1))) / 8;
+      }
+      let nx = -gx * strength;
+      let ny = -gy * strength;
+      const nz = 1;
+      if (invertX) nx = -nx;
+      /* Image y grows downward but a normal map's green points UP the image, so
+         the sign here is already flipped relative to the gradient; the checkbox
+         flips it back for the DirectX convention. */
+      ny = invertY ? ny : -ny;
+      const len = Math.hypot(nx, ny, nz);
+      const i = (y * width + x) * 3;
+      out[i] = nx / len;
+      out[i + 1] = ny / len;
+      out[i + 2] = nz / len;
+    }
+  }
+  return out;
+}
+
+function normalsToPixels(normals, width, height) {
+  const out = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    /* (n + 1) / 2 * 255, rounded. A flat normal (0, 0, 1) therefore encodes as
+       (128, 128, 255) -- 127.5 rounds up, which is the convention every engine
+       decodes with. */
+    out[i * 4] = Math.round((normals[i * 3] + 1) * 127.5);
+    out[i * 4 + 1] = Math.round((normals[i * 3 + 1] + 1) * 127.5);
+    out[i * 4 + 2] = Math.round((normals[i * 3 + 2] + 1) * 127.5);
+    out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+
+function heightToPixels(field, width, height) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const v of field) { if (v < min) min = v; if (v > max) max = v; }
+  const span = Math.max(1e-9, max - min);
+  const out = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    const v = Math.round(((field[i] - min) / span) * 255);
+    out[i * 4] = v; out[i * 4 + 1] = v; out[i * 4 + 2] = v; out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+
+/* Blinn-Phong with a light at a position above the plane, which is how a 2D
+   game's dynamic light behaves: the direction changes across the sprite. */
+function shade(normals, sourcePixels, width, height, light) {
+  const out = new Uint8ClampedArray(width * height * 4);
+  const ambient = light.ambient;
+  const spec = light.specular;
+  const lz = light.z * Math.max(width, height);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      let lx = light.x - x;
+      let ly = -(light.y - y);   /* flip into normal-map space */
+      let ll = Math.hypot(lx, ly, lz);
+      lx /= ll; ly /= ll;
+      const lzn = lz / ll;
+      const nx = normals[i * 3];
+      const ny = normals[i * 3 + 1];
+      const nz = normals[i * 3 + 2];
+      const diffuse = Math.max(0, nx * lx + ny * ly + nz * lzn);
+      /* Half vector against a viewer straight ahead, so the highlight tracks
+         the light rather than sitting still. */
+      const hx = lx;
+      const hy = ly;
+      const hz = lzn + 1;
+      const hl = Math.hypot(hx, hy, hz);
+      const specular = spec * Math.pow(Math.max(0, (nx * hx + ny * hy + nz * hz) / hl), 32);
+      const shadeAmount = Math.min(1.6, ambient + diffuse * (1 - ambient));
+      const p = i * 4;
+      out[p] = sourcePixels[p] * shadeAmount + specular * 255;
+      out[p + 1] = sourcePixels[p + 1] * shadeAmount + specular * 255;
+      out[p + 2] = sourcePixels[p + 2] * shadeAmount + specular * 255;
+      out[p + 3] = sourcePixels[p + 3];
+    }
+  }
+  return out;
+}
+
+/* ---- Test surfaces -----------------------------------------------------------
+   Shapes whose normals are known exactly, so the pipeline can be checked rather
+   than admired. Heights are in pixels, matching everything above. */
+function testSurface(kind, size, options = {}) {
+  const field = new Float32Array(size * size);
+  const R = options.radius || size * 0.45;
+  const slope = options.slope === undefined ? 0.25 : options.slope;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const px = x - size / 2 + 0.5;
+      const py = y - size / 2 + 0.5;
+      let v = 0;
+      if (kind === 'sphere') {
+        const r2 = px * px + py * py;
+        v = r2 < R * R ? Math.sqrt(R * R - r2) : 0;
+      } else if (kind === 'ramp') {
+        v = px * slope;
+      } else if (kind === 'ramp-y') {
+        v = py * slope;
+      } else if (kind === 'cone') {
+        v = Math.max(0, R - Math.hypot(px, py)) * slope;
+      }
+      field[y * size + x] = v;
+    }
+  }
+  return field;
+}
+
+/* ---- Demo sprites ------------------------------------------------------------- */
+
+function demoSprite(kind, size = 256) {
+  const px = new Uint8ClampedArray(size * size * 4);
+  const set = (x, y, r, g, b, a) => {
+    const i = (y * size + x) * 4;
+    px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = a;
+  };
+  if (kind === 'bricks') {
+    const bw = 64;
+    const bh = 32;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const row = Math.floor(y / bh);
+        const offset = (row % 2) * (bw / 2);
+        const lx = (x + offset) % bw;
+        const ly = y % bh;
+        const mortar = lx < 3 || ly < 3;
+        const shade2 = mortar ? 60 : 150 + ((x * 7 + y * 13) % 40);
+        set(x, y, shade2, Math.round(shade2 * 0.6), Math.round(shade2 * 0.5), 255);
+      }
+    }
+  } else if (kind === 'blob') {
+    const cx = size / 2;
+    const cy = size / 2;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const a = Math.atan2(y - cy, x - cx);
+        const wobble = 1 + 0.16 * Math.sin(a * 5) + 0.09 * Math.sin(a * 3 + 1.2);
+        const inside = Math.hypot(x - cx, y - cy) < size * 0.38 * wobble;
+        set(x, y, 90, 210, 140, inside ? 255 : 0);
+      }
+    }
+  } else {
+    const cx = size / 2;
+    const cy = size / 2;
+    const R = size * 0.4;
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const d = Math.hypot(x - cx, y - cy);
+        if (d > R) { set(x, y, 0, 0, 0, 0); continue; }
+        /* A rim, a face, and an embossed ring, so there is something for the
+           bevel and the luminance modes to disagree about. */
+        const ring = Math.abs(d - R * 0.66) < R * 0.08 ? 40 : 0;
+        const v = 190 - ring + (d > R * 0.9 ? -50 : 0);
+        set(x, y, v, Math.round(v * 0.82), 70, 255);
+      }
+    }
+  }
+  return { width: size, height: size, pixels: px };
+}
+
+/* ==== UI ==== */
+
+const $ = (id) => document.getElementById(id);
+const canvases = {
+  source: $('source'), height: $('height'), normal: $('normal'), lit: $('lit'),
+};
+const ctxs = Object.fromEntries(Object.entries(canvases).map(([k, c]) => [k, c.getContext('2d', { willReadFrequently: true })]));
+
+const state = {
+  mode: 'luminance', scale: 12, blur: 1, bevel: 10,
+  operator: 'sobel', strength: 1, invertX: false, invertY: false,
+  lightX: 70, lightY: 70, lightZ: 0.55, ambient: 0.18, specular: 0.35, orbit: true,
+};
+
+let image = demoSprite('coin');
+let heightField = null;
+let normals = null;
+
+const NOTES = {
+  luminance: 'The usual first guess, and it is wrong as often as it is right — it reads paint as shape, so a dark stripe becomes a groove. Good for stone, brick and bark; poor for anything with flat colours.',
+  'luminance-inv': 'For art where the shading is painted dark in the creases, which is most hand-drawn pixel art.',
+  alpha: 'A flat plateau at the silhouette. On its own it gives a cliff edge; turn the smoothing up and it becomes a soft dome.',
+  bevel: 'Distance from the silhouette edge, curved. This is the one that makes a flat sprite look like a solid object, and it ignores the painted detail entirely.',
+};
+
+function rebuild() {
+  const { width, height, pixels } = image;
+  for (const c of Object.values(canvases)) { c.width = width; c.height = height; }
+
+  ctxs.source.putImageData(new ImageData(pixels.slice(), width, height), 0, 0);
+
+  const raw = state.mode === 'bevel'
+    ? bevelHeight(pixels, width, height, state.bevel)
+    : heightFromImage(pixels, width, height, state.mode);
+  /* Height is kept in pixels so the gradient is a real slope; the scale slider
+     is literally how many pixels tall the white end of the map is. */
+  const scaled = new Float32Array(raw.length);
+  for (let i = 0; i < raw.length; i++) scaled[i] = raw[i] * state.scale;
+  heightField = blur(scaled, width, height, state.blur);
+
+  normals = heightToNormals(heightField, width, height, {
+    strength: state.strength, operator: state.operator,
+    invertX: state.invertX, invertY: state.invertY,
+  });
+
+  ctxs.height.putImageData(new ImageData(heightToPixels(heightField, width, height), width, height), 0, 0);
+  ctxs.normal.putImageData(new ImageData(normalsToPixels(normals, width, height), width, height), 0, 0);
+  refreshStats();
+  drawLit();
+}
+
+function refreshStats() {
+  const { width, height } = image;
+  let steepest = 0;
+  let tiltSum = 0;
+  let flat = 0;
+  for (let i = 0; i < width * height; i++) {
+    const nz = normals[i * 3 + 2];
+    const tilt = Math.acos(Math.min(1, Math.max(-1, nz)));
+    if (tilt > steepest) steepest = tilt;
+    tiltSum += tilt;
+    if (tilt < 0.01) flat++;
+  }
+  $('stat-size').textContent = `${width} × ${height}`;
+  $('stat-slope').textContent = `${((steepest * 180) / Math.PI).toFixed(1)}°`;
+  $('stat-tilt').textContent = `${(((tiltSum / (width * height)) * 180) / Math.PI).toFixed(1)}°`;
+  $('stat-flat').textContent = `${((flat / (width * height)) * 100).toFixed(1)}%`;
+}
+
+function drawLit() {
+  const { width, height, pixels } = image;
+  const lit = shade(normals, pixels, width, height, {
+    x: state.lightX, y: state.lightY, z: state.lightZ,
+    ambient: state.ambient, specular: state.specular,
+  });
+  ctxs.lit.putImageData(new ImageData(lit, width, height), 0, 0);
+  /* The light itself, so it is obvious where it is. */
+  ctxs.lit.fillStyle = 'rgba(255,240,180,0.95)';
+  ctxs.lit.beginPath();
+  ctxs.lit.arc(state.lightX, state.lightY, Math.max(3, width / 60), 0, Math.PI * 2);
+  ctxs.lit.fill();
+}
+
+let orbitAngle = 0;
+function orbitTick() {
+  if (state.orbit) {
+    orbitAngle += 0.012;
+    const { width, height } = image;
+    state.lightX = width / 2 + Math.cos(orbitAngle) * width * 0.42;
+    state.lightY = height / 2 + Math.sin(orbitAngle) * height * 0.42;
+    if (normals) drawLit();
+  }
+  requestAnimationFrame(orbitTick);
+}
+
+/* ---- wiring ---- */
+
+const SLIDERS = [
+  ['scale-slider', 'scale-value', 'scale', (v) => String(v), true],
+  ['blur-slider', 'blur-value', 'blur', (v) => v.toFixed(1), true],
+  ['bevel-slider', 'bevel-value', 'bevel', (v) => String(v), true],
+  ['strength-slider', 'strength-value', 'strength', (v) => v.toFixed(2), true],
+  ['lz-slider', 'lz-value', 'lightZ', (v) => v.toFixed(2), false],
+  ['ambient-slider', 'ambient-value', 'ambient', (v) => v.toFixed(2), false],
+  ['spec-slider', 'spec-value', 'specular', (v) => v.toFixed(2), false],
+];
+for (const [slider, label, key, format, heavy] of SLIDERS) {
+  $(slider).addEventListener('input', () => {
+    state[key] = Number($(slider).value);
+    $(label).textContent = format(state[key]);
+    if (heavy) rebuild(); else drawLit();
+  });
+}
+
+$('source-select').addEventListener('change', () => {
+  state.mode = $('source-select').value;
+  $('source-note').textContent = NOTES[state.mode];
+  rebuild();
+});
+$('operator-select').addEventListener('change', () => { state.operator = $('operator-select').value; rebuild(); });
+for (const [id, key] of [['invx-check', 'invertX'], ['invy-check', 'invertY']]) {
+  $(id).addEventListener('change', () => { state[key] = $(id).checked; rebuild(); });
+}
+$('orbit-check').addEventListener('change', () => { state.orbit = $('orbit-check').checked; });
+
+document.querySelector('.nm-source-row').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-demo]');
+  if (!btn) return;
+  image = demoSprite(btn.dataset.demo);
+  rebuild();
+});
+
+$('image-input').addEventListener('change', (ev) => {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    /* Anything much over 1024 makes the distance transform and the blur visibly
+       slow on a phone, and a normal map that big is rarely what a 2D game
+       wants anyway. */
+    const max = 1024;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, w, h);
+    image = { width: w, height: h, pixels: cx.getImageData(0, 0, w, h).data };
+    URL.revokeObjectURL(img.src);
+    state.lightX = w * 0.3;
+    state.lightY = h * 0.3;
+    rebuild();
+  };
+  img.src = URL.createObjectURL(file);
+});
+
+function pointerLight(ev) {
+  const rect = canvases.lit.getBoundingClientRect();
+  state.lightX = ((ev.clientX - rect.left) / rect.width) * image.width;
+  state.lightY = ((ev.clientY - rect.top) / rect.height) * image.height;
+  state.orbit = false;
+  $('orbit-check').checked = false;
+  drawLit();
+}
+canvases.lit.addEventListener('pointerdown', (ev) => {
+  canvases.lit.setPointerCapture(ev.pointerId);
+  pointerLight(ev);
+  ev.preventDefault();
+});
+canvases.lit.addEventListener('pointermove', (ev) => {
+  if (ev.buttons) pointerLight(ev);
+});
+
+function download(name, canvas) {
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const link = $('download-link');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }, 'image/png');
+}
+$('normal-btn').addEventListener('click', () => download('normal.png', canvases.normal));
+$('height-btn').addEventListener('click', () => download('height.png', canvases.height));
+
+window.__normal = {
+  heightFromImage, bevelHeight, distanceTransform, distanceTransform1D, blur, gaussianKernel,
+  heightToNormals, normalsToPixels, heightToPixels, shade, testSurface, demoSprite, luminance,
+  set(opts) { Object.assign(state, opts); rebuild(); return { width: image.width, height: image.height }; },
+  load(kind) { image = demoSprite(kind); rebuild(); return { width: image.width, height: image.height }; },
+  get normals() { return normals; },
+  get height() { return heightField; },
+};
+
+/* ---- boot ---- */
+$('source-note').textContent = NOTES[state.mode];
+rebuild();
+requestAnimationFrame(orbitTick);
+</script>
+<!-- Slippy Deck: floating Slippy TV + jukebox player. Renders nothing unless admin.slippylabs.com/whoami confirms a signed-in account. -->
+<script defer src="https://slippylabs.com/deck/deck.js"></script>
+<!-- Slippy Labs sitewide privacy link. Self-contained on purpose: these sites
+     share no CSS, so it carries its own styles and inherits the page's text
+     colour instead of assuming a palette. position/z-index are load bearing --
+     the HUD theme's .starfield/.scanlines are fixed at z-index 0-1 and would
+     paint straight over an unpositioned footer.
+     The .page-wrap trim below is what keeps the bar on the first screen. -->
+<div class="sl-legal"><a href="https://slippylabs.com/privacy.html">Privacy</a></div>
+<style>
+.sl-legal{box-sizing:border-box;position:relative;z-index:3;height:64px;display:flex;align-items:center;justify-content:center;margin:0;padding:0 12px;font-family:"Consolas","SFMono-Regular",Menlo,Monaco,"Courier New",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.5}
+.sl-legal a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px}
+.sl-legal a:hover,.sl-legal a:focus-visible{text-decoration:underline;opacity:1}
+/* This page centres .page-wrap at min-height:100vh, which would push the bar a
+   whole screen below the fold. Give back exactly the bar height instead of
+   adding a scrollbar to a page that had none. */
+.page-wrap{min-height:calc(100vh - 64px)}
+</style>
+</body>
+</html>
