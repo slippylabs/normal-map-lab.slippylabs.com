@@ -646,15 +646,30 @@ function drawLit() {
   ctxs.lit.fill();
 }
 
-let orbitAngle = 0;
-function orbitTick() {
+let orbitAngle = 0, lastOrbit = null;
+function orbitTick(now) {
+  // 0.012 rad per 60 Hz frame, as it always was -- but scaled by the real
+  // elapsed time. Per frame, the light orbited at whatever the display
+  // refreshed at: a revolution took 8.7 s on a 60 Hz panel and 3.6 s on a
+  // 144 Hz one, and the box is checked by default so everyone saw it.
+  //
+  // A rotation is linear in time, so this scales directly -- unlike an
+  // exponential ease, which needs 1 - (1 - k)^frames instead.
+  //
+  // Capped at eight frames so a tab that was backgrounded for a minute does
+  // not resume with the light jumped most of the way round.
   if (state.orbit) {
-    orbitAngle += 0.012;
+    const frames = lastOrbit === null ? 1 : Math.min(8, (now - lastOrbit) / (1000 / 60));
+    orbitAngle += 0.012 * frames;
     const { width, height } = image;
     state.lightX = width / 2 + Math.cos(orbitAngle) * width * 0.42;
     state.lightY = height / 2 + Math.sin(orbitAngle) * height * 0.42;
     if (normals) drawLit();
   }
+  // Unconditionally, and OUTSIDE the branch: if this only advanced while the
+  // orbit ran, re-ticking the checkbox would measure the whole time it spent
+  // switched off and jump the light by the full cap.
+  lastOrbit = now;
   requestAnimationFrame(orbitTick);
 }
 
